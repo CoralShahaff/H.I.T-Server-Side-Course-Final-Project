@@ -148,29 +148,38 @@ const fetchMonthlyReport = async (id, year, month) => {
             date: { $gte: startDate, $lte: endDate }
         });
 
-        const groupedCosts = costs.reduce((acc, cost) => {
-            if (!acc[cost.category]) {
-                acc[cost.category] = [];
-            }
-            acc[cost.category].push({
+        const categories = ['food', 'health', 'housing', 'sport', 'education'];
+        const groupedCosts = {};
+
+        categories.forEach(category => {
+            groupedCosts[category] = [];
+        });
+
+        // Populate categories with cost data
+        costs.forEach(cost => {
+            groupedCosts[cost.category].push({
                 sum: cost.sum,
-                day: new Date(cost.date).getDate(),
-                month: Number(month),
-                description: cost.description
+                description: cost.description,
+                day: new Date(cost.date).getDate()
             });
-            return acc;
-        }, {});
+        });
 
         return {
             status: 200,
-            data: Object.keys(groupedCosts).map(category => ({
-                [category]: groupedCosts[category]
-            }))
+            data: {
+                userid: Number(id),
+                year: Number(year),
+                month: Number(month),
+                costs: Object.keys(groupedCosts).map(category => ({
+                    [category]: groupedCosts[category]
+                }))
+            }
         };
     } catch (error) {
         return { status: 500, error: error.message };
     }
 };
+
 
 
 // Controller for adding a new cost
@@ -223,6 +232,7 @@ const removeCost = async (req, res) => {
  */
 const getMonthlyReport = async (req, res) => {
     const { id, year, month } = req.query;
+
     if (!id || isNaN(id)) {
         return res.status(400).json({ error: "Valid user ID is required." });
     }
@@ -232,12 +242,15 @@ const getMonthlyReport = async (req, res) => {
     if (!month || isNaN(month) || month < 1 || month > 12) {
         return res.status(400).json({ error: "Month must be between 1 and 12." });
     }
+
     const result = await fetchMonthlyReport(id, year, month);
     if (result.error) {
         return res.status(result.status).json({ error: result.error });
     }
     return res.status(result.status).json(result.data);
 };
+
+
 const fetchDevelopers = () => {
     return {
         status: 200,
